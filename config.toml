@@ -1,0 +1,5 @@
+[server]
+headless = true
+enableCORS = false
+runOnSave = true
+port = 8502
