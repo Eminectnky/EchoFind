@@ -1,48 +1,61 @@
 import streamlit as st
-import spotipy
-from spotipy.oauth2 import SpotifyOAuth
-from dotenv import load_dotenv
-import os
+from spotify_utils import get_recently_played, add_to_favorites, remove_from_favorites
 
-load_dotenv()
+if "favorites" not in st.session_state:
+    st.session_state["favorites"] = []
 
-# Spotify API kimlik bilgileri
-CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
-CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
-REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI")
+if "recent_tracks" not in st.session_state:
+    st.session_state["recent_tracks"] = []
 
-# Spotify API bağlantısı
-scope = "user-read-recently-played user-library-read user-top-read"
-sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
-    client_id=CLIENT_ID,
-    client_secret=CLIENT_SECRET,
-    redirect_uri=REDIRECT_URI,
-    scope=scope
-))
+if "action_feedback" not in st.session_state:
+    st.session_state["action_feedback"] = None  
+
+
+with st.sidebar:
+    st.subheader("❤️ Favoriler")
+    if len(st.session_state["favorites"]) == 0:
+        st.write("Henüz favorilere eklenmiş şarkı yok.")
+    else:
+        for track in st.session_state["favorites"]:
+            st.write(f"🎵 **{track['Şarkı']}** by {track['Sanatçı']}")
+            st.image(track['Kapak'], width=50)
+            st.write(f"[Dinle]({track['Spotify Linki']})")
+            if st.button(f"🗑️ Sil {track['Şarkı']}", key=f"remove_{track['ID']}"):
+                st.session_state["favorites"], st.session_state["action_feedback"] = remove_from_favorites(
+                    track["ID"], st.session_state["favorites"]
+                )
 
 
 st.title("Spotify Son Dinlenen Şarkılar")
-st.write("Spotify API ile son dinlediğiniz şarkıları listeleyen bir uygulama.")
+st.write("Spotify API ile son dinlediğiniz şarkıları listeleyin ve favorilere ekleyin.")
 
-
-def get_recently_played():
-    results = sp.current_user_recently_played(limit=10)
-    tracks = []
-    for item in results['items']:
-        track = item['track']
-        tracks.append({
-            'Şarkı': track['name'],
-            'Sanatçı': ', '.join([artist['name'] for artist in track['artists']]),
-            'Albüm': track['album']['name'],
-            'Kapak': track['album']['images'][0]['url'],
-            'Spotify Linki': track['external_urls']['spotify']
-        })
-    return tracks
+if st.session_state["action_feedback"]:
+    st.success(st.session_state["action_feedback"])
+    st.session_state["action_feedback"] = None  
 
 if st.button("Son Dinlenen Şarkıları Göster"):
-    tracks = get_recently_played()
-    for track in tracks:
-        st.write(f"🎵 {track['Şarkı']} by {track['Sanatçı']}")
-        st.write(f"Albüm: {track['Albüm']}")
+    st.session_state["recent_tracks"] = get_recently_played()
+
+if st.session_state["recent_tracks"]:
+    st.subheader("Son Dinlenen Şarkılar")
+    for index, track in enumerate(st.session_state["recent_tracks"]):
+        st.write(f"🎵 **{track['Şarkı']}** by {track['Sanatçı']}")
+        st.write(f"Albüm: *{track['Albüm']}*")
         st.image(track['Kapak'], width=100)
         st.write(f"[Dinle]({track['Spotify Linki']})")
+
+        # Favorilere Ekleme veya Silme
+        if track["ID"] in [t["ID"] for t in st.session_state["favorites"]]:
+            # Eğer favorilerdeyse "Sil" butonu
+            if st.button(f"🗑️ Favorilerden Sil {track['Şarkı']}", key=f"remove_{track['ID']}_{index}"):
+                st.session_state["favorites"], st.session_state["action_feedback"] = remove_from_favorites(
+                    track["ID"], st.session_state["favorites"]
+                )
+        else:
+            # Eğer favorilerde değilse "Ekle" butonu
+            if st.button(f"❤️ Favorilere Ekle {track['Şarkı']}", key=f"add_{track['ID']}_{index}"):
+                st.session_state["action_feedback"] = add_to_favorites(
+                    track, st.session_state["favorites"]
+                )
+
+        st.divider()
