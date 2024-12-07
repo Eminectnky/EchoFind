@@ -1,4 +1,4 @@
-def gemini():
+def gemini(song_names):
     import os
     import google.generativeai as genai
     from dotenv import load_dotenv
@@ -7,7 +7,6 @@ def gemini():
 
     genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
-    # Create the model
     generation_config = {
         "temperature": 1,
         "top_p": 0.95,
@@ -21,12 +20,8 @@ def gemini():
         generation_config=generation_config,
     )
 
-    prompt = "Eskişehir hakkında bilgi ver"
+    song_list_str = ", ".join(song_names)
+    response = model.generate_content(f"Bu şarkılardan yola çıkarak motive edici birkaç cümle yaz lütfen. Şarkı listesi: {song_list_str}")
 
-    response = model.generate_content("Malatya hakkında bilgi ver")
-
-    print(response.text)
 
     return response.text
-
-gemini()
